@@ -24,7 +24,7 @@ class Favor {
   get isRequested => accepted == null;
 
   /// returns true if the favor is already completed
-  get isCompleted => completed;
+  get isCompleted => true;
 
   /// returns true if the favor was not accepted
   get isRefused => accepted == false;

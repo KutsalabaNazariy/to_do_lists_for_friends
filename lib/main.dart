@@ -24,7 +24,7 @@ class MyApp extends StatelessWidget {
         completedFavors: mockCompletedFavors,
         refusedFavors: mockRefusedFavors,
         acceptedFavors: mockDoingFavors,
-        key: null,
+        //key: null,
       ),
     );
   }
@@ -38,7 +38,7 @@ class FavorsPage extends StatelessWidget {
   final List<Favor> refusedFavors;
 
   const FavorsPage({
-    required Key? key,
+    Key? key,
     required this.pendingAnswerFavors,
     required this.acceptedFavors,
     required this.completedFavors,
@@ -64,10 +64,18 @@ class FavorsPage extends StatelessWidget {
         ),
         body: TabBarView(
           children: [
-            _favorsList("Pending Requests", pendingAnswerFavors),
-            _favorsList("Doing", acceptedFavors),
-            _favorsList("Completed", completedFavors),
-            _favorsList("Refused", refusedFavors),
+            FavorsList(
+                title: "Pending Requests",
+                favors: pendingAnswerFavors),
+            FavorsList(
+                title: "Doing",
+                favors: acceptedFavors),
+            FavorsList(
+                title: "Completed",
+                favors: completedFavors),
+            FavorsList(
+                title: "Refused",
+                favors: refusedFavors),
           ],
         ),
         floatingActionButton: FloatingActionButton(
@@ -84,8 +92,19 @@ class FavorsPage extends StatelessWidget {
       child: Text(title),
     );
   }
+}
 
-  Widget _favorsList(String title, List<Favor> favors) {
+class FavorsList extends StatelessWidget {
+  final String title;
+  final List<Favor> favors;
+
+  const FavorsList({
+    Key? key,
+    required this.title,
+    required this.favors}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
     return Column(
       mainAxisSize: MainAxisSize.max,
       children: <Widget>[
@@ -99,24 +118,36 @@ class FavorsPage extends StatelessWidget {
             itemCount: favors.length,
             itemBuilder: (BuildContext context, int index) {
               final favor = favors[index];
-              return Card(
-                key: ValueKey(favor.uuid),
-                margin: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 25.0),
-                child: Padding(
-                  child: Column(
-                    children: <Widget>[
-                      _itemHeader(favor),
-                      Text(favor.description),
-                      _itemFooter(favor)
-                    ],
-                  ),
-                  padding: const EdgeInsets.all(8.0),
-                ),
-              );
+              return FavorCardItem(favor: favor);
             },
           ),
         ),
       ],
+    );
+  }
+}
+
+class FavorCardItem extends StatelessWidget {
+  final Favor favor;
+
+  const FavorCardItem(
+      {Key? key, required this.favor}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      key: ValueKey(favor.uuid),
+      margin: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 25.0),
+      child: Padding(
+        child: Column(
+          children: <Widget>[
+            _itemHeader(favor),
+            Text(favor.description),
+            _itemFooter(favor)
+          ],
+        ),
+        padding: const EdgeInsets.all(8.0),
+      ),
     );
   }
 
@@ -165,7 +196,7 @@ class FavorsPage extends StatelessWidget {
     return Container();
   }
 
-  Row _itemHeader(Favor favor) {
+  Widget _itemHeader(Favor favor) {
     return Row(
       children: <Widget>[
         CircleAvatar(
@@ -215,8 +246,8 @@ class RequestFavorPage extends StatelessWidget {
               items: friends
                   .map(
                     (f) => DropdownMenuItem(
-                  child: Text(f.name),
-                ),
+                      child: Text(f.name),
+                    ),
               ).toList(), onChanged: null,
             ),
             Container(
@@ -234,7 +265,7 @@ class RequestFavorPage extends StatelessWidget {
             DateTimeField(
               //inputType: InputType.both,
               format: DateFormat("EEEE, MMMM d, yyyy 'at' h:mma"),
-              enabled: false,
+              //enabled: false,
               decoration: const InputDecoration(
                 labelText: 'Date/Time', hintText: 'Hint Text',
                 errorText: 'Error Text',
