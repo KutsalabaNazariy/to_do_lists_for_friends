@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:hands_on_layouts/favor.dart';
 import 'package:hands_on_layouts/friend.dart';
@@ -5,6 +7,11 @@ import 'package:hands_on_layouts/mock_values.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:datetime_picker_formfield/datetime_picker_formfield.dart';
+
+
+import 'dart:developer';
+import 'package:pretty_json/pretty_json.dart';
+
 
 void main() => runApp(const MyApp());
 
@@ -14,36 +21,51 @@ class MyApp extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return const MaterialApp(
       title: 'Flutter Demo',
       // home: RequestFavorPage( // uncomment this and comment 'home' below to change the visible page for now
       //   friends: mockFriends,
       // ),
-      home: FavorsPage(
-        pendingAnswerFavors: mockPendingFavors,
-        completedFavors: mockCompletedFavors,
-        refusedFavors: mockRefusedFavors,
-        acceptedFavors: mockDoingFavors,
-        //key: null,
-      ),
+      home: FavorsPage(),
     );
   }
 }
 
-class FavorsPage extends StatelessWidget {
-  // using mock values from mock_favors dart file for now
-  final List<Favor> pendingAnswerFavors;
-  final List<Favor> acceptedFavors;
-  final List<Favor> completedFavors;
-  final List<Favor> refusedFavors;
-
+class FavorsPage extends StatefulWidget {
   const FavorsPage({
     Key? key,
-    required this.pendingAnswerFavors,
-    required this.acceptedFavors,
-    required this.completedFavors,
-    required this.refusedFavors,
   }) : super(key: key);
+  @override
+  State<StatefulWidget> createState() => FavorsPageState();
+}
+
+class FavorsPageState extends State<FavorsPage> {
+  // using mock values from mock_favors dart file for now
+  late final List<Favor>? pendingAnswerFavors;
+  late final List<Favor>? acceptedFavors;
+  late final List<Favor>? completedFavors;
+  late final List<Favor>? refusedFavors;
+
+  @override
+  void initState() {
+    super.initState();
+    pendingAnswerFavors = [];
+    acceptedFavors = [];
+    completedFavors = [];
+    refusedFavors = [];
+    loadFavors();
+  }
+
+  void loadFavors() {
+    pendingAnswerFavors!.addAll(mockPendingFavors);
+    acceptedFavors!.addAll(mockDoingFavors);
+    completedFavors!.addAll(mockCompletedFavors);
+    refusedFavors!.addAll(mockRefusedFavors);
+  }
+
+  static FavorsPageState? of(BuildContext context) {
+    return context.findAncestorStateOfType<FavorsPageState>();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -64,22 +86,22 @@ class FavorsPage extends StatelessWidget {
         ),
         body: TabBarView(
           children: [
-            FavorsList(
-                title: "Pending Requests",
-                favors: pendingAnswerFavors),
-            FavorsList(
-                title: "Doing",
-                favors: acceptedFavors),
-            FavorsList(
-                title: "Completed",
-                favors: completedFavors),
-            FavorsList(
-                title: "Refused",
-                favors: refusedFavors),
+            FavorsList(title: "Pending Requests", favors: pendingAnswerFavors!),
+            FavorsList(title: "Doing", favors: acceptedFavors!),
+            FavorsList(title: "Completed", favors: completedFavors!),
+            FavorsList(title: "Refused", favors: refusedFavors!),
           ],
         ),
         floatingActionButton: FloatingActionButton(
-          onPressed: () {},
+          onPressed: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => RequestFavorPage(
+                  friends: mockFriends,
+                ),
+              ),
+            );
+          },
           tooltip: 'Ask a favor',
           child: const Icon(Icons.add),
         ),
@@ -92,16 +114,50 @@ class FavorsPage extends StatelessWidget {
       child: Text(title),
     );
   }
+
+  void refuseToDo(Favor favor) {
+    setState(() {
+      pendingAnswerFavors!.remove(favor);
+
+      refusedFavors!.add(favor.copyWith(accepted: false));
+    });
+  }
+
+  void acceptToDo(Favor favor) {
+    setState(() {
+      pendingAnswerFavors!.remove(favor);
+
+      acceptedFavors!.add(favor.copyWith(accepted: true));
+    });
+  }
+
+  void giveUp(Favor favor) {
+    setState(() {
+      acceptedFavors!.remove(favor);
+
+      refusedFavors!.add(favor.copyWith(
+        accepted: false,
+      ));
+    });
+  }
+
+  void complete(Favor favor) {
+    setState(() {
+      acceptedFavors!.remove(favor);
+
+      completedFavors!.add(favor.copyWith(
+        completed: DateTime.now(),
+      ));
+    });
+  }
 }
 
 class FavorsList extends StatelessWidget {
   final String title;
   final List<Favor> favors;
 
-  const FavorsList({
-    Key? key,
-    required this.title,
-    required this.favors}) : super(key: key);
+  const FavorsList({Key? key, required this.title, required this.favors})
+      : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -130,8 +186,7 @@ class FavorsList extends StatelessWidget {
 class FavorCardItem extends StatelessWidget {
   final Favor favor;
 
-  const FavorCardItem(
-      {Key? key, required this.favor}) : super(key: key);
+  const FavorCardItem({Key? key, required this.favor}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -143,7 +198,7 @@ class FavorCardItem extends StatelessWidget {
           children: <Widget>[
             _itemHeader(favor),
             Text(favor.description),
-            _itemFooter(favor)
+            _itemFooter(context, favor)
           ],
         ),
         padding: const EdgeInsets.all(8.0),
@@ -151,7 +206,7 @@ class FavorCardItem extends StatelessWidget {
     );
   }
 
-  Widget _itemFooter(Favor favor) {
+  Widget _itemFooter(BuildContext context, Favor favor) {
     if (favor.isCompleted) {
       final format = DateFormat();
       return Container(
@@ -168,11 +223,15 @@ class FavorCardItem extends StatelessWidget {
         children: <Widget>[
           TextButton(
             child: const Text("Refuse"),
-            onPressed: () {},
+            onPressed: () {
+              FavorsPageState.of(context)!.refuseToDo(favor);
+            },
           ),
           TextButton(
             child: const Text("Do"),
-            onPressed: () {},
+            onPressed: () {
+              FavorsPageState.of(context)!.acceptToDo(favor);
+            },
           )
         ],
       );
@@ -214,10 +273,24 @@ class FavorCardItem extends StatelessWidget {
   }
 }
 
-class RequestFavorPage extends StatelessWidget {
+class RequestFavorPage extends StatefulWidget {
   final List<Friend> friends;
 
-  const RequestFavorPage({required Key key, required this.friends}) : super(key: key);
+  const RequestFavorPage({Key? key, required this.friends}) : super(key: key);
+
+  @override
+  RequestFavorPageState createState() {
+    return RequestFavorPageState();
+  }
+}
+
+class RequestFavorPageState extends State<RequestFavorPage> {
+  final _formKey = GlobalKey<FormState>();
+  late Friend _selectedFriend;
+
+  static RequestFavorPageState? of(BuildContext context) {
+    return context.findAncestorStateOfType<RequestFavorPageState>();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -226,65 +299,95 @@ class RequestFavorPage extends StatelessWidget {
         title: const Text("Requesting a favor"),
         leading: const CloseButton(),
         actions: <Widget>[
-          TextButton(
-            style: TextButton.styleFrom(
-              primary: Colors.white,
+          Builder(
+            builder: (context) => TextButton(
+              child: const Text("SAVE", style: TextStyle(color: Colors.white)),
+              onPressed: () {
+                RequestFavorPageState.of(context)!.save();
+              },
             ),
-              child: const Text("SAVE"),
-                onPressed: () {}
           ),
         ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(12.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            const Text("Request a favor to:"),
-            DropdownButtonFormField(
-              items: friends
-                  .map(
-                    (f) => DropdownMenuItem(
-                      child: Text(f.name),
-                    ),
-              ).toList(), onChanged: null,
-            ),
-            Container(
-              height: 16.0,
-            ),
-            const Text("Favor description:"),
-            TextFormField(
-              maxLines: 5,
-              inputFormatters: [LengthLimitingTextInputFormatter(200)],
-            ),
-            Container(
-              height: 16.0,
-            ),
-            const Text("Due Date:"),
-            DateTimeField(
-              //inputType: InputType.both,
-              format: DateFormat("EEEE, MMMM d, yyyy 'at' h:mma"),
-              //enabled: false,
-              decoration: const InputDecoration(
-                labelText: 'Date/Time', hintText: 'Hint Text',
-                errorText: 'Error Text',
-                border: OutlineInputBorder(),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              DropdownButtonFormField<Friend>(
+                value: _selectedFriend,
+                onChanged: (friend) {
+                  setState(() {
+                    _selectedFriend = friend!;
+                  });
+                },
+                items: widget.friends
+                    .map(
+                      (f) => DropdownMenuItem<Friend>(
+                        value: f,
+                        child: Text(f.name),
+                      ),
+                    )
+                    .toList(),
+                validator: (friend) {
+                  if (friend == null) {
+                    return "You must select a friend to ask the favor";
+                  }
+                  return null;
+                },
               ),
-              onChanged: (dt) {},
-              onShowPicker: (context, currentValue) {
-                return showDatePicker(
-                  context: context,
-                  firstDate: DateTime.now(),
-                  initialDate: currentValue ?? DateTime.now(),
-                  lastDate: DateTime.now().add(const Duration(days: 30))
-                );
-              },
-            ),
-          ],
+              Container(
+                height: 16.0,
+              ),
+              const Text("Favor description:"),
+              TextFormField(
+                maxLines: 5,
+                inputFormatters: [LengthLimitingTextInputFormatter(200)],
+                validator: (value) {
+                  if (value!.isEmpty) {
+                    return "You must detail the favor";
+                  }
+                  return null;
+                },
+              ),
+              Container(
+                height: 16.0,
+              ),
+              const Text("Due Date:"),
+              DateTimeField(
+                format: DateFormat("EEEE, MMMM d, yyyy 'at' h:mma"),
+                enabled: false,
+                decoration: const InputDecoration(
+                    labelText: 'Date/Time',
+                    floatingLabelBehavior: FloatingLabelBehavior.never),
+                validator: (dateTime) {
+                  if (dateTime == null) {
+                    return "You must select a due date time for the favor";
+                  }
+                  return null;
+                },
+                onShowPicker: (context, currentValue) {
+                  return showDatePicker(
+                      context: context,
+                      firstDate: DateTime.now(),
+                      initialDate: currentValue ?? DateTime.now(),
+                      lastDate: DateTime.now().add(const Duration(days: 30)));
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
-}
 
+  void save() {
+    if (_formKey.currentState!.validate()) {
+      // store the favor request on firebase
+      Navigator.pop(context);
+    }
+  }
+}
